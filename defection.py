@@ -4,6 +4,7 @@ import os
 import numpy as np
 from ultralytics import YOLO
 import paho.mqtt.client as mqtt
+import torch  # Import torch for checking GPU availability
 
 def runElephantDetection():
     # MQTT connection functions
@@ -47,28 +48,33 @@ def runElephantDetection():
         # Output video settings
         out = cv2.VideoWriter(video_path_out, cv2.VideoWriter_fourcc(*'MP4V'), int(cap.get(cv2.CAP_PROP_FPS)), (W, H))
 
-        # Load YOLO model
-        model_path = "best3.pt"    
-        model = YOLO(model_path)
+        # Check if GPU is available and set the device accordingly
+        if torch.cuda.is_available():
+            device = torch.device('cuda')
+            print("GPU detected")  # Print statement when GPU is detected
+        else:
+            device = torch.device('cpu')
+            print("GPU not detected, using CPU")  # Print if using CPU
+
+        # Load YOLO model and ensure it runs on the appropriate device
+        model_path = "best3.pt"
+        model = YOLO(model_path).to(device)  # Set the model to use GPU or CPU based on availability
 
         threshold = 0.5  # Confidence threshold
-
-        # Only predict elephants (class_id == 20 in this example)
         allowed_class_id = 20  # Assuming elephant is class ID 20 in your custom model
 
         while ret:
-            frame = cv2.resize(frame, (640, 480))
+            frame = cv2.resize(frame, (640, 480))  # Consider reducing this size if performance is still low
 
             # Start time for FPS calculation
             current_time = cv2.getTickCount()
 
-            # Run YOLO prediction, limit to specific class using 'classes' parameter
-            results = model.predict(source=frame, classes=[allowed_class_id])[0]
+            # Run YOLO prediction on the set device (GPU or CPU), limiting to specific class
+            results = model.predict(source=frame, device=device, classes=[allowed_class_id])[0]
 
-            print('------results',results.boxes.data.tolist())
+            print('------results', results.boxes.data.tolist())
 
-
-            # Process each detection (limit to class_id == 20 for elephants)
+            # Process each detection
             for result in results.boxes.data.tolist():
                 x1, y1, x2, y2, score, class_id = result
 
@@ -90,8 +96,8 @@ def runElephantDetection():
                     cv2.putText(frame, "Elephant", (int(x1), int(y1 - 10)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3, cv2.LINE_AA)
 
-            print('-----logic',len(results.boxes.data.tolist())==0)
-            if (len(results.boxes.data.tolist())==0):
+            print('-----logic', len(results.boxes.data.tolist()) == 0)
+            if len(results.boxes.data.tolist()) == 0:
                 # Check for elephant exit scenario
                 if elephantDetected and elephantExitCount == 15:
                     print('false message 👉')
@@ -100,10 +106,10 @@ def runElephantDetection():
                     send_message(mqttc, "sliitelp/detect", "false")
                 elephantExitCount += 1
 
-                # Calculate FPS and display it
-                time_diff = (cv2.getTickCount() - current_time) / cv2.getTickFrequency()
-                fps = 1 / time_diff
-                cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+            # Calculate FPS and display it
+            time_diff = (cv2.getTickCount() - current_time) / cv2.getTickFrequency()
+            fps = 1 / time_diff
+            cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
 
             # Show the frame with bounding boxes
             cv2.imshow('Frame', frame)
