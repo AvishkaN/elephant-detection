@@ -1,13 +1,13 @@
 import tkinter as tk
 from defection import runElephantDetection
-from data_analysis import getDatInsights
+from data_analysis import getDataRecords
 
 def button1_action():
     runElephantDetection()
     print('detection started')
 
 def button2_action():
-    getDatInsights()
+    getDataRecords()
     print('started data analysis')
 
 # Create the main window

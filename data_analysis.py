@@ -4,44 +4,93 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
+import requests
 
-def getDatInsights():
 
-    def generate_synthetic_data(num_entries=500):
-        data = []
-        start_time = datetime(2024, 5, 5, 16, 30)
+def getDataRecords():
 
-        for i in range(num_entries):
-            timestamp = start_time + timedelta(seconds=np.random.randint(30, 600))
-            status = np.random.choice([True, False], p=[0.3, 0.7])
+    # URL of the API endpoint
+    url = "http://iotprojects.mypressonline.com/php/get_data.php"  
+
+    try:
+        # Send the GET request
+        response = requests.get(url)
+
+        
+        
+        # Check if the request was successful (status code 200)
+        if response.status_code == 200:
+            # Parse the JSON response data
+            data = response.json()
             
-            if status:
-                temperature = round(np.random.uniform(25, 35), 2)
-                humidity = round(np.random.uniform(60, 100), 2)
-                lux_level = round(np.random.uniform(30, 100), 2)
-            else:
-                temperature = round(np.random.uniform(20, 25), 2)
-                humidity = round(np.random.uniform(50, 60), 2)
-                lux_level = round(np.random.uniform(0, 30), 2)
+            # Display the DataFrame with capitalized headers
+            print("Data retrieved successfully and loaded")
+            getDatInsights(data)
 
-            data.append({
-                "ID": i + 1,
-                "Timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
-                "Status": status,
-                "Temperature": temperature,
-                "Humidity": humidity,
-                "Lux Level": lux_level
-            })
+        else:
+            print(f"Error: Unable to fetch data. Status code: {response.status_code}")
+            failAPICall()
+    except requests.exceptions.RequestException as e:
+        # Print any request errors
+        print(f"Request failed: {e}")
+        failAPICall()
 
-            start_time = timestamp
-        return pd.DataFrame(data)
 
+
+def generate_synthetic_data(num_entries=500):
+    data = []
+    start_time = datetime(2024, 9, 4, 16, 30)
+
+    for i in range(num_entries):
+        timestamp = start_time + timedelta(seconds=np.random.randint(30, 600))
+        status = np.random.choice([True, False], p=[0.3, 0.7])
+        
+        if status:
+            temperature = round(np.random.uniform(25, 35), 2)
+            humidity = round(np.random.uniform(60, 100), 2)
+            lux_level = round(np.random.uniform(30, 100), 2)
+        else:
+            temperature = round(np.random.uniform(20, 25), 2)
+            humidity = round(np.random.uniform(50, 60), 2)
+            lux_level = round(np.random.uniform(0, 30), 2)
+
+        data.append({
+            "ID": i + 1,
+            "Timestamp": timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            "Status": status,
+            "Temperature": temperature,
+            "Humidity": humidity,
+            "Lux Level": lux_level
+        })
+
+        start_time = timestamp
+    return data
+
+
+
+def failAPICall():
+    getDatInsights(generate_synthetic_data())
+
+
+def getDatInsights(data):
     # Create a timestamped folder with hyphens instead of colons
     folder_name = datetime.now().strftime("%H-%M-%S %d-%m-%Y")
     os.makedirs(folder_name, exist_ok=True)
 
     # Save the full synthetic data to a CSV file inside the folder
-    df = generate_synthetic_data(1000)
+    # df = generate_synthetic_data(1000)
+    dfTest = pd.DataFrame(generate_synthetic_data(1000))
+    dfTest.to_csv('genaratedData.csv',index=False)
+
+    if os.path.exists('temp_data.csv'):
+        os.remove('temp_data.csv')
+
+    dfLoad = pd.DataFrame(data)
+    # Save the DataFrame to a CSV file
+    dfLoad.to_csv('temp_data.csv', index=False)
+    # df=pd.read_csv('temp_data.csv')
+    df=pd.read_csv('all_data.csv')
+
     df.to_csv(os.path.join(folder_name, '2_all_data.csv'), index=False)
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
     df['Temperature'] = pd.to_numeric(df['Temperature'])
