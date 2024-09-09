@@ -70,7 +70,7 @@ def runElephantDetection():
             current_time = cv2.getTickCount()
 
             # Run YOLO prediction on the set device (GPU or CPU), limiting to specific class
-            results = model.predict(source=frame, device=device, classes=[allowed_class_id])[0]
+            results = model.predict(source=frame, device=device, classes=[allowed_class_id], device='cuda')[0]
 
             print('------results', results.boxes.data.tolist())
 
