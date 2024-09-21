@@ -1,4 +1,3 @@
-# Necessary imports
 import cv2
 import os
 import numpy as np
@@ -43,6 +42,16 @@ def runElephantDetection():
     elephantsRecordedThreshold = 30
     elephantDetected = False
     elephantExitCount = 0
+
+    # Reference bounding box width (in pixels) and corresponding reference distance (in meters)
+    REFERENCE_BBOX_WIDTH = 300  # This is a hypothetical width of the elephant's bounding box at 10 meters
+    REFERENCE_DISTANCE = 10  # Reference distance in meters
+
+    def calculate_distance(bbox_width, reference_width, reference_distance):
+        """Estimate the distance of the elephant based on the bounding box width."""
+        if bbox_width == 0:
+            return float('inf')  # Infinite distance if bbox width is zero
+        return reference_distance * (reference_width / bbox_width)
 
     try:
         # Output video settings
@@ -91,12 +100,18 @@ def runElephantDetection():
                     else:
                         recodedElephants += 1
 
-                    # Draw bounding box and label
+                    # Calculate bounding box width and estimate the distance
+                    bbox_width = x2 - x1
+                    distance = calculate_distance(bbox_width, REFERENCE_BBOX_WIDTH, REFERENCE_DISTANCE)
+                    print(f"Estimated distance: {distance:.2f} meters")
+
+                    # Draw bounding box, label, and distance
                     cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 4)
                     cv2.putText(frame, "Elephant", (int(x1), int(y1 - 10)),
                                 cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3, cv2.LINE_AA)
+                    cv2.putText(frame, f"Distance: {distance:.2f} meters", (int(x1), int(y2 + 30)),
+                                cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2, cv2.LINE_AA)
 
-            print('-----logic', len(results.boxes.data.tolist()) == 0)
             if len(results.boxes.data.tolist()) == 0:
                 # Check for elephant exit scenario
                 if elephantDetected and elephantExitCount == 15:
